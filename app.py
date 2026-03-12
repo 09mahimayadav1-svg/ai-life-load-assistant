@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
@@ -6,6 +7,18 @@ from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+
+OAUTH_STATE_FILE = "oauth_states.json"
+
+def load_oauth_states():
+    if not os.path.exists(OAUTH_STATE_FILE):
+        return {}
+    with open(OAUTH_STATE_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_oauth_states(states):
+    with open(OAUTH_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(states, f)
 
 app = FastAPI(title="AI Life-Load Assistant API")
 
@@ -68,33 +81,55 @@ def google_auth():
         prompt="consent",
     )
 
-    ACTIVE_FLOWS[state] = flow
+    states = load_oauth_states()
+    states[state] = {
+        "code_verifier": flow.code_verifier
+    }
+    save_oauth_states(states)
+
     return RedirectResponse(auth_url)
 
 
 @app.get("/auth/google/callback")
 def google_callback(state: str, code: str):
-    flow = ACTIVE_FLOWS.get(state)
+    states = load_oauth_states()
+    state_data = states.get(state)
 
-    if not flow:
+    if not state_data:
         raise HTTPException(
             status_code=400,
             detail="OAuth session expired or state not found. Start login again."
         )
 
+    flow = Flow.from_client_config(
+        {
+            "web": {
+                "client_id": CLIENT_ID,
+                "client_secret": CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [REDIRECT_URI],
+            }
+        },
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI,
+    )
+
+    flow.code_verifier = state_data["code_verifier"]
     flow.fetch_token(code=code)
+
     creds = flow.credentials
 
     with open("token.json", "w", encoding="utf-8") as token_file:
         token_file.write(creds.to_json())
 
-    ACTIVE_FLOWS.pop(state, None)
+    states.pop(state, None)
+    save_oauth_states(states)
 
     return {
         "status": "success",
         "message": "Google Calendar connected successfully and token saved"
     }
-
 
 def get_calendar_service():
     if not os.path.exists("token.json"):

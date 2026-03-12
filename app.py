@@ -194,3 +194,9 @@ def analyze_workload():
         "stress_score": stress_score,
         "suggestion": advice,
     }
+
+@app.get("/debug/env")
+def debug_env():
+    return {
+        "redirect_uri": REDIRECT_URI
+    }

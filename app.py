@@ -268,6 +268,28 @@ class ChoreItem(BaseModel):
     due_today: bool = True
 
 
+def build_daily_insight(workload_level, stress_score, events_count, chores_count):
+    if stress_score >= 8:
+        return (
+            f"Today looks highly loaded with {events_count} calendar events and "
+            f"{chores_count} household tasks. Protect recovery time, avoid adding "
+            f"new tasks, and take a guided breathing reset."
+        )
+    elif stress_score >= 6:
+        return (
+            f"Today looks moderately busy with {events_count} calendar events and "
+            f"{chores_count} household tasks. You should batch small tasks together "
+            f"and take one short pause between high-focus activities."
+        )
+    else:
+        return (
+            f"Today looks manageable with {events_count} calendar events and "
+            f"{chores_count} household tasks. This is a good day for focused work "
+            f"and steady home planning."
+        )
+
+
+
 # =========================
 # Basic Routes
 # =========================
@@ -309,6 +331,60 @@ def breathing_reset():
         "stress_score": stress_score,
         "workload_level": workload_level,
         "breathing_reset": breathing_plan
+    }
+
+
+@app.get("/ai/life-assistant")
+def unified_life_assistant():
+    events = get_todays_calendar_events()
+
+    chores = load_json_file(CHORES_FILE, [])
+    today_chores = [c for c in chores if c.get("due_today", True)]
+
+    prefs = load_json_file(PREFERENCES_FILE, {
+        "food_type": "vegetarian",
+        "dislikes": [],
+        "preferred_cuisine": "Indian",
+        "breakfast_time": "08:30",
+        "lunch_time": "13:00",
+        "dinner_time": "20:00",
+    })
+
+    workload_level, stress_score = calculate_workload_level(len(events))
+    meal_plan = build_meal_plan(workload_level, prefs)
+    breathing_reset = generate_breathing_reset(stress_score)
+
+    meal_planning_minutes_saved = 20 * 7
+    grocery_minutes_saved = 15 * 2
+    chore_planning_minutes_saved = 10 * 7
+    schedule_interpretation_minutes_saved = 12 * 7
+
+    total_minutes_saved = (
+        meal_planning_minutes_saved
+        + grocery_minutes_saved
+        + chore_planning_minutes_saved
+        + schedule_interpretation_minutes_saved
+    )
+
+    daily_insight = build_daily_insight(
+        workload_level=workload_level,
+        stress_score=stress_score,
+        events_count=len(events),
+        chores_count=len(today_chores)
+    )
+
+    return {
+        "calendar_events_count": len(events),
+        "household_chores_count": len(today_chores),
+        "calendar_events": events,
+        "household_chores": today_chores,
+        "workload_level": workload_level,
+        "stress_score": stress_score,
+        "meal_plan": meal_plan,
+        "breathing_reset": breathing_reset,
+        "weekly_time_saved_minutes": total_minutes_saved,
+        "weekly_time_saved_hours": round(total_minutes_saved / 60, 2),
+        "daily_ai_insight": daily_insight
     }
 
 # =========================

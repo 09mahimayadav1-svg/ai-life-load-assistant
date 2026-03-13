@@ -653,8 +653,7 @@ def get_today_dashboard():
 
     workload_level, stress_score = calculate_workload_level(len(events))
     meal_plan = build_meal_plan(workload_level, prefs)
-
-	breathing = generate_breathing_reset(stress_score)
+    breathing = generate_breathing_reset(stress_score)
 
     return {
         "calendar_events_count": len(events),

@@ -1,2 +1,9 @@
-python-dotenv
+fastapi
+uvicorn
 openai
+pydantic
+python-dotenv
+httpx
+google-auth
+google-auth-oauthlib
+google-auth-httplib2

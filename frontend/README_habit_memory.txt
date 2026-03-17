@@ -1,0 +1,1 @@
+v9 package = OpenAI chat + habit-learning memory. Replace backend/app.py, backend/memory_engine.py, backend/requirements.txt, frontend/streamlit_app.py, and add backend/habit_memory.json. In backend .env add OPENAI_API_KEY and optionally OPENAI_MODEL=gpt-5.4.

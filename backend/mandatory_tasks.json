@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Drop kids to school",
+    "start_time": "07:30",
+    "duration_min": 40,
+    "category": "kids"
+  },
+  {
+    "title": "Breakfast",
+    "start_time": "08:30",
+    "duration_min": 20,
+    "category": "meal"
+  },
+  {
+    "title": "Lunch",
+    "start_time": "13:00",
+    "duration_min": 30,
+    "category": "meal"
+  },
+  {
+    "title": "Dinner",
+    "start_time": "20:00",
+    "duration_min": 40,
+    "category": "meal"
+  },
+  {
+    "title": "Family time",
+    "start_time": "21:00",
+    "duration_min": 45,
+    "category": "family"
+  },
+  {
+    "title": "Getting ready kids",
+    "start_time": "07:00",
+    "duration_min": 60,
+    "category": "kids"
+  }
+]

@@ -1,0 +1,1 @@
+Use these updated V2 files to replace your current backend/app.py, backend/inventory_engine.py, frontend/streamlit_app.py, and add backend/mandatory_tasks.json

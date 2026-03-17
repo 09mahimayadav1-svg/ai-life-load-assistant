@@ -1,0 +1,9 @@
+[
+  {
+    "title": "Breakfast Cooking",
+    "preferred_time": "06:30",
+    "duration_min": 30,
+    "due_today": true,
+    "priority": "high"
+  }
+]

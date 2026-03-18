@@ -290,26 +290,81 @@ def health():
 @app.get('/auth/google/start')
 def auth_google_start():
     require_env()
-    flow = Flow.from_client_config({'web': {'client_id': CLIENT_ID, 'client_secret': CLIENT_SECRET, 'auth_uri': 'https://accounts.google.com/o/oauth2/auth', 'token_uri': 'https://oauth2.googleapis.com/token'}}, scopes=SCOPES, redirect_uri=REDIRECT_URI)
-    auth_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true', prompt='consent')
-    states = load_oauth_states()
-    states[state] = {'created_at': datetime.now(IST).isoformat()}
+
+    flow = Flow.from_client_config(
+        {
+            'web': {
+                'client_id': CLIENT_ID,
+                'client_secret': CLIENT_SECRET,
+                'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
+                'token_uri': 'https://oauth2.googleapis.com/token'
+            }
+        },
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI,
+        autogenerate_code_verifier=True
+    )
+
+    auth_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='consent'
+    )
+
+    states = {}
+    states[state] = {
+        'created_at': datetime.now(IST).isoformat(),
+        'code_verifier': flow.code_verifier
+    }
     save_oauth_states(states)
+
     return RedirectResponse(auth_url)
+
 
 @app.get('/auth/google/callback')
 def auth_google_callback(state: str, code: str):
     require_env()
+
     states = load_oauth_states()
     if state not in states:
         raise HTTPException(status_code=400, detail='Invalid OAuth state.')
-    flow = Flow.from_client_config({'web': {'client_id': CLIENT_ID, 'client_secret': CLIENT_SECRET, 'auth_uri': 'https://accounts.google.com/o/oauth2/auth', 'token_uri': 'https://oauth2.googleapis.com/token'}}, scopes=SCOPES, redirect_uri=REDIRECT_URI, state=state)
+
+    saved = states[state]
+    code_verifier = saved.get('code_verifier')
+    if not code_verifier:
+        raise HTTPException(status_code=400, detail='Missing code verifier for OAuth flow.')
+
+    flow = Flow.from_client_config(
+        {
+            'web': {
+                'client_id': CLIENT_ID,
+                'client_secret': CLIENT_SECRET,
+                'auth_uri': 'https://accounts.google.com/o/oauth2/auth',
+                'token_uri': 'https://oauth2.googleapis.com/token'
+            }
+        },
+        scopes=SCOPES,
+        state=state,
+        redirect_uri=REDIRECT_URI
+    )
+
+    flow.code_verifier = code_verifier
     flow.fetch_token(code=code)
+
     with open(TOKEN_FILE, 'w', encoding='utf-8') as f:
         f.write(flow.credentials.to_json())
+
     states.pop(state, None)
     save_oauth_states(states)
-    return {'status': 'success'}
+
+    return HTMLResponse("""
+    <html>
+      <body>
+        <h3>Google Calendar connected successfully.</h3>
+        <p>You can close this tab and return to the app.</p>
+      </body>
+    </html>
+    """)
 
 @app.get('/chores')
 def get_chores():

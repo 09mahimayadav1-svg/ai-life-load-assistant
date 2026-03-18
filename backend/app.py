@@ -366,6 +366,7 @@ def auth_google_callback(state: str, code: str):
     </html>
     """)
 
+
 @app.get('/chores')
 def get_chores():
     chores = load_json_file(CHORES_FILE, [])

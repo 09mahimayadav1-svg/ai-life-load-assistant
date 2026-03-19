@@ -365,6 +365,42 @@ def auth_google_callback(request: Request, state: str, code: str):
     response.delete_cookie("oauth_code_verifier")
     return response
 
+from googleapiclient.discovery import build
+
+@app.get("/calendar/events")
+def get_events():
+    require_env()
+
+    if not os.path.exists(TOKEN_FILE):
+        raise HTTPException(status_code=400, detail="User not authenticated")
+
+    from google.oauth2.credentials import Credentials
+
+    creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+
+    service = build("calendar", "v3", credentials=creds)
+
+    events_result = service.events().list(
+        calendarId="primary",
+        maxResults=10,
+        singleEvents=True,
+        orderBy="startTime"
+    ).execute()
+
+    events = events_result.get("items", [])
+
+    return {
+        "events": [
+            {
+                "summary": e.get("summary"),
+                "start": e.get("start"),
+                "end": e.get("end")
+            }
+            for e in events
+        ]
+    }
+
+
 @app.get('/chores')
 def get_chores():
     chores = load_json_file(CHORES_FILE, [])

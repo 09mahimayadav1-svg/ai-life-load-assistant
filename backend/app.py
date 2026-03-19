@@ -1,3 +1,6 @@
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import RedirectResponse, HTMLResponse
+
 from fastapi.responses import HTMLResponse
 import os, json
 from datetime import datetime, timedelta
@@ -312,48 +315,21 @@ def auth_google_start():
         prompt='consent'
     )
 
-    states = {}
-    states[state] = {
-        'created_at': datetime.now(IST).isoformat(),
-        'code_verifier': flow.code_verifier
-    }
-    print("DEBUG START BASE_DIR:", BASE_DIR)
-    print("DEBUG START OAUTH_STATE_FILE:", OAUTH_STATE_FILE)
-    print("DEBUG START STATE:", state)
-    print("DEBUG START CODE_VERIFIER:", flow.code_verifier)
-    print("DEBUG START STATES TO SAVE:", states)
-
-    save_oauth_states(states)
-
-    print("DEBUG START SAVED FILE EXISTS:", os.path.exists(OAUTH_STATE_FILE))
-    if os.path.exists(OAUTH_STATE_FILE):
-        with open(OAUTH_STATE_FILE, "r", encoding="utf-8") as f:
-            print("DEBUG START FILE CONTENT:", f.read())
-
-    return RedirectResponse(auth_url)
-
+    response = RedirectResponse(auth_url)
+    response.set_cookie("oauth_state", state, httponly=True, secure=True, samesite="lax")
+    response.set_cookie("oauth_code_verifier", flow.code_verifier, httponly=True, secure=True, samesite="lax")
+    return response
 
 @app.get('/auth/google/callback')
-def auth_google_callback(state: str, code: str):
+def auth_google_callback(request: Request, state: str, code: str):
     require_env()
 
-    print("DEBUG CALLBACK BASE_DIR:", BASE_DIR)
-    print("DEBUG CALLBACK OAUTH_STATE_FILE:", OAUTH_STATE_FILE)
-    print("DEBUG CALLBACK FILE EXISTS:", os.path.exists(OAUTH_STATE_FILE))
-    if os.path.exists(OAUTH_STATE_FILE):
-        with open(OAUTH_STATE_FILE, "r", encoding="utf-8") as f:
-            print("DEBUG CALLBACK FILE CONTENT:", f.read())
-    print("DEBUG CALLBACK RECEIVED STATE:", state)
-    print("DEBUG CALLBACK RECEIVED CODE:", code[:20] if code else None)
+    saved_state = request.cookies.get("oauth_state")
+    code_verifier = request.cookies.get("oauth_code_verifier")
 
-    states = load_oauth_states()
-    print("DEBUG CALLBACK LOADED STATES:", states)
-
-    if state not in states:
+    if not saved_state or state != saved_state:
         raise HTTPException(status_code=400, detail='Invalid OAuth state.')
 
-    saved = states[state]
-    code_verifier = saved.get('code_verifier')
     if not code_verifier:
         raise HTTPException(status_code=400, detail='Missing code verifier for OAuth flow.')
 
@@ -377,10 +353,7 @@ def auth_google_callback(state: str, code: str):
     with open(TOKEN_FILE, 'w', encoding='utf-8') as f:
         f.write(flow.credentials.to_json())
 
-    states.pop(state, None)
-    save_oauth_states(states)
-
-    return HTMLResponse("""
+    response = HTMLResponse("""
     <html>
       <body>
         <h3>Google Calendar connected successfully.</h3>
@@ -388,7 +361,9 @@ def auth_google_callback(state: str, code: str):
       </body>
     </html>
     """)
-
+    response.delete_cookie("oauth_state")
+    response.delete_cookie("oauth_code_verifier")
+    return response
 
 @app.get('/chores')
 def get_chores():

@@ -1,3 +1,8 @@
+import os
+
+DATA_DIR = "/var/data"
+os.makedirs(DATA_DIR, exist_ok=True)
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse, HTMLResponse
 
@@ -32,12 +37,13 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 IST = ZoneInfo('Asia/Kolkata')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PREFERENCES_FILE = os.path.join(BASE_DIR, 'preferences.json')
-CHORES_FILE = os.path.join(BASE_DIR, 'chores.json')
+CHORES_FILE = os.path.join(BASE_DIR, '/var/data/chores.json')
 MANDATORY_TASKS_FILE = os.path.join(BASE_DIR, 'mandatory_tasks.json')
-OAUTH_STATE_FILE = os.path.join(BASE_DIR, 'oauth_states.json')
-TOKEN_FILE = os.path.join(BASE_DIR, 'token.json')
-MEAL_LOG_FILE = os.path.join(BASE_DIR, 'meal_log.json')
-HABIT_MEMORY_FILE = os.path.join(BASE_DIR, 'habit_memory.json')
+
+TOKEN_FILE = os.path.join(DATA_DIR, "token.json")
+OAUTH_STATE_FILE = os.path.join(DATA_DIR, "oauth_states.json")
+MEAL_LOG_FILE = os.path.join(BASE_DIR, '/var/data/meal_log.json')
+HABIT_MEMORY_FILE = os.path.join(BASE_DIR, '/var/data/habit_memory.json')
 DATA_FILE = os.path.abspath(os.path.join(BASE_DIR, '..', 'data', 'meal_inventory_data.xlsx'))
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
@@ -370,7 +376,7 @@ from googleapiclient.discovery import build
 @app.get("/calendar/events")
 def get_events():
     require_env()
-
+    print("TOKEN FILE EXISTS:", os.path.exists(TOKEN_FILE))
     if not os.path.exists(TOKEN_FILE):
         raise HTTPException(status_code=400, detail="User not authenticated")
 
